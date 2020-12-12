@@ -23,6 +23,7 @@
 struct pc_datum {
     double t = 0;
     std::array<uint8_t, 3> c; // r, g, b.
+    uint8_t i = 0; // infrared intensity.
     vec3<float> v; // x, y, z.
 };
 
@@ -101,11 +102,17 @@ int main(int argc, char **argv){
                 auto verts = ps.get_vertices();
                 auto tex_coords = ps.get_texture_coordinates();
 
-                const uint8_t* texture_data = reinterpret_cast<const uint8_t*>(colour.get_data());
-                const int32_t tex_w = colour.get_width();
-                const int32_t tex_h = colour.get_height();
-                const int32_t tex_bpp = colour.get_bytes_per_pixel();
-                const int32_t tex_stride = colour.get_stride_in_bytes();
+                const uint8_t* c_texture_data = reinterpret_cast<const uint8_t*>(colour.get_data());
+                const int32_t c_tex_w = colour.get_width();
+                const int32_t c_tex_h = colour.get_height();
+                const int32_t c_tex_bpp = colour.get_bytes_per_pixel();
+                const int32_t c_tex_stride = colour.get_stride_in_bytes();
+
+                const uint8_t* i_texture_data = reinterpret_cast<const uint8_t*>(infra.get_data());
+                const int32_t i_tex_w = infra.get_width();
+                const int32_t i_tex_h = infra.get_height();
+                const int32_t i_tex_bpp = infra.get_bytes_per_pixel();
+                const int32_t i_tex_stride = infra.get_stride_in_bytes();
 
         std::lock_guard<std::mutex> l(pc_bulk_m);
                 if(max_datum_count <= (pc_bulk.size() + N_verts)){
@@ -121,9 +128,13 @@ int main(int argc, char **argv){
                         const vec3<float> v(verts[i].x, -verts[i].y, -verts[i].z);
 
                         // Query the colour frame to get the proper colour.
-                        const int32_t x = std::min( std::max(static_cast<int>(tex_coords[i].u * tex_w + 0.5f), 0), tex_w - 1);
-                        const int32_t y = std::min( std::max(static_cast<int>(tex_coords[i].v * tex_h + 0.5f), 0), tex_h - 1);
-                        const int32_t c_index = x * tex_bpp + y * tex_stride;
+                        const int32_t c_x = std::min( std::max(static_cast<int32_t>(tex_coords[i].u * c_tex_w + 0.5f), 0), c_tex_w - 1);
+                        const int32_t c_y = std::min( std::max(static_cast<int32_t>(tex_coords[i].v * c_tex_h + 0.5f), 0), c_tex_h - 1);
+                        const int32_t c_index = c_x * c_tex_bpp + c_y * c_tex_stride;
+
+                        const int32_t i_x = std::min( std::max(static_cast<int32_t>(tex_coords[i].u * i_tex_w + 0.5f), 0), i_tex_w - 1);
+                        const int32_t i_y = std::min( std::max(static_cast<int32_t>(tex_coords[i].v * i_tex_h + 0.5f), 0), i_tex_h - 1);
+                        const int32_t i_index = i_x * i_tex_bpp + i_y * i_tex_stride;
 
 
                         //// Apply a copy of the current transformation.
@@ -137,9 +148,10 @@ int main(int argc, char **argv){
                         //      << "\n"; // Let OS manage write flushing.
                         pc_bulk.emplace_back();
                         pc_bulk.back().t = frame_time;
-                        pc_bulk.back().c = { texture_data[c_index + 0],
-                                             texture_data[c_index + 1],
-                                             texture_data[c_index + 2] };
+                        pc_bulk.back().c = { c_texture_data[c_index + 0],
+                                             c_texture_data[c_index + 1],
+                                             c_texture_data[c_index + 2] };
+                        pc_bulk.back().i = i_texture_data[i_index];
                         pc_bulk.back().v = v;
                     }
                 }
@@ -250,6 +262,7 @@ int main(int argc, char **argv){
                        << "property uchar red" << std::endl
                        << "property uchar green" << std::endl
                        << "property uchar blue" << std::endl
+                       << "property uchar intensity" << std::endl
                        << "end_header" << std::endl;
                 }
 
@@ -259,6 +272,7 @@ int main(int argc, char **argv){
                    << " " << static_cast<int>(d.c[0]) 
                    << " " << static_cast<int>(d.c[1])
                    << " " << static_cast<int>(d.c[2])
+		   << " " << static_cast<int>(d.i)
                    << "\n"; // Let OS manage write flushing at the end.
 
                 ++num_written;
