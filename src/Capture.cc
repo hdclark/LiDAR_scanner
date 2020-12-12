@@ -64,6 +64,9 @@ int main(int argc, char **argv){
                 if(!colour) colour = sframes.get_infrared_frame();
                 if(!colour) FUNCERR("Unable to get synchronized colour frame");
 
+                auto infra = sframes.get_infrared_frame();
+                if(!infra) infra = sframes.get_color_frame();
+
                 auto depth = sframes.get_depth_frame();
                 if(!depth) FUNCERR("Unable to get synchronized depth frame");
 
@@ -89,7 +92,8 @@ int main(int argc, char **argv){
                 //}
 
                 rs2::pointcloud pc;
-                pc.map_to(colour);
+                //pc.map_to(colour);
+                pc.map_to(infra);
                 rs2::points ps = pc.calculate(depth);
                 if(!ps) FUNCERR("Unable to get texture-mapped point set from synchronized frame");
 
@@ -190,7 +194,7 @@ int main(int argc, char **argv){
         //
         // NOTE: Instead, periodically check shutter button state.
         FUNCINFO("Collecting frames now..");
-        for(auto i = 0; i < 15; ++i){
+        for(auto i = 0; i < 10; ++i){
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
             std::lock_guard<std::mutex> l(pc_bulk_m);
@@ -238,6 +242,7 @@ int main(int argc, char **argv){
                     os.open(fname);
                     os << "ply" << std::endl
                        << "format ascii 1.0" << std::endl
+		       << "comment metadata time = " << static_cast<uint64_t>(d.t) << std::endl
                        << "element vertex " << points_at_time[d.t] << std::endl
                        << "property float x" << std::endl
                        << "property float y" << std::endl
@@ -250,7 +255,7 @@ int main(int argc, char **argv){
 
                 // Transform v here (TODO).
                 // v' = f(v, d.t);
-                os << d.v.x << " " << -d.v.y << " " << -d.v.z
+                os << d.v.x << " " << d.v.y << " " << d.v.z
                    << " " << static_cast<int>(d.c[0]) 
                    << " " << static_cast<int>(d.c[1])
                    << " " << static_cast<int>(d.c[2])
