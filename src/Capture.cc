@@ -274,7 +274,7 @@ int main(int argc, char **argv){
                     os.open(fname);
                     os << "ply" << std::endl
                        << "format ascii 1.0" << std::endl
-		       << "comment metadata time = " << static_cast<uint64_t>(d.t) << std::endl
+		       << "comment metadata: time = " << static_cast<uint64_t>(d.t) << std::endl
                        << "element vertex " << points_at_time[d.t] << std::endl
                        << "property float x" << std::endl
                        << "property float y" << std::endl
