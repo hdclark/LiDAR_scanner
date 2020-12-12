@@ -12,8 +12,8 @@ Currently, reading from the camera and writing to disk are separated; frames are
 captured in memory until a fixed-size RAM buffer has been filled. Data is
 written to disk after collection, and is slower than collection. So the camera
 can only operate in bursts. This slightly awkward procedure is used to capture
-both as many frames as possible, and as regularly as possible, Capturing frames
-quickly helps reduce frame stutter and motion artifacts.
+as many frames as possible, as regularly as possible. Capturing frames quickly
+helps reduce frame stutter and motion artifacts.
 
 The `L515` includes motion tracking via an inertial measurement unit. One of the
 goals of this project is to be able to walk around and scan a static scene. To
