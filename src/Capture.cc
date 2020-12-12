@@ -274,7 +274,7 @@ int main(int argc, char **argv){
                     os.open(fname);
                     os << "ply" << std::endl
                        << "format ascii 1.0" << std::endl
-		       << "comment metadata: time = " << static_cast<uint64_t>(d.t) << std::endl
+		               << "comment metadata: time = " << static_cast<uint64_t>(d.t) << std::endl
                        << "element vertex " << points_at_time[d.t] << std::endl
                        << "property float x" << std::endl
                        << "property float y" << std::endl
@@ -292,7 +292,7 @@ int main(int argc, char **argv){
                    << " " << static_cast<int>(d.c[0]) 
                    << " " << static_cast<int>(d.c[1])
                    << " " << static_cast<int>(d.c[2])
-		   << " " << static_cast<int>(d.i)
+		           << " " << static_cast<int>(d.i)
                    << "\n"; // Let OS manage write flushing at the end.
 
                 ++num_written;
