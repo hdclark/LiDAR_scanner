@@ -1,7 +1,9 @@
 //Capture.cc -- Written by hal clark, 2020.
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
+#include <sstream>
 #include <string>
 #include <vector>
 #include <map>
@@ -19,6 +21,24 @@
 
 #include <YgorMisc.h>
 #include <YgorMath.h>
+
+std::string as_percentage(uint64_t a, uint64_t b){
+    const long double d_a = static_cast<long double>(1.0) * a;
+    const long double d_b = static_cast<long double>(1.0) * b;
+    const long double p = (d_a / d_b) * 100.0;
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(1) << p;
+    return ss.str();
+}
+
+std::string as_GB(uint64_t a){
+    const long double d_a = static_cast<long double>(1.0) * a;
+    const long double d_b = static_cast<long double>(1'000'000'000);
+    const long double p = (d_a / d_b);
+    std::stringstream ss;
+    ss << std::fixed << std::setprecision(1) << p;
+    return ss.str();
+}
 
 struct pc_datum {
     double t = 0;
@@ -211,9 +231,9 @@ int main(int argc, char **argv){
 
             std::lock_guard<std::mutex> l(pc_bulk_m);
             std::cout << "  Filled "
-                      << 0.1 * static_cast<double>(1000 * (1UL + pc_bulk.size()) / max_datum_count)
+                      << as_percentage(pc_bulk.size(), max_datum_count)
                       << "\% of buffer ("
-                      << 0.1 * static_cast<double>(10 * sizeof(pc_datum) * pc_bulk.size() / 1'000'000'000)
+                      << as_GB(sizeof(pc_datum) * pc_bulk.size())
                       << " GB)..." << std::endl;
         }
 
@@ -278,7 +298,7 @@ int main(int argc, char **argv){
                 ++num_written;
                 if( (num_written % num_notify) == 0 ){
                     std::cout << "  "
-                              << 0.1 * static_cast<double>(1000 * (2UL + num_written) / pc_bulk.size())
+                              << as_percentage(num_written, pc_bulk.size())
                               << "\% of buffer has been written..."
                               << std::endl;
                 }
