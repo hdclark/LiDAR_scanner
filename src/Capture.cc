@@ -41,10 +41,16 @@ std::string as_GB(uint64_t a){
 }
 
 struct pc_datum {
-    double t = 0;
+    unsigned long long t = 0;
     std::array<uint8_t, 3> c; // r, g, b.
     uint8_t i = 0; // infrared intensity.
     vec3<float> v; // x, y, z.
+};
+
+struct t_datum {
+    unsigned long long t = 0;
+    vec3<float> c; // 3-vector coordinates (angles, position, acceleration, etc.).
+    uint8_t type = 0; // accel or gyro.
 };
 
 int main(int argc, char **argv){
@@ -59,6 +65,7 @@ int main(int argc, char **argv){
 
     // Positioning / transform data.
     std::mutex transform_m;
+    std::vector<t_datum> t_bulk;
 
     std::mutex frame_number_m;
     long int frame_number = 0;
@@ -69,10 +76,10 @@ int main(int argc, char **argv){
         rs2::log_to_console(RS2_LOG_SEVERITY_WARN);
         //rs2::log_to_console(RS2_LOG_SEVERITY_ERROR);
 
-        auto frame_handler = [&](const rs2::frame& mframe) -> void {
+        auto frame_handler = [&](const rs2::frame& multiframe) -> void {
 
             // If this is a set of synchronized frames, extract a point cloud.
-            if(rs2::frameset sframes = mframe.as<rs2::frameset>()){
+            if(rs2::frameset sframes = multiframe.as<rs2::frameset>()){
 
                 // Discard the first frames to allow auto-exposure to stabilize.
                 {
@@ -97,14 +104,15 @@ int main(int argc, char **argv){
                 ////    frame_time = depth.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
                 ////}else if(depth.supports_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP)){
                 ////    frame_time = depth.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
-                //}else if(mframe.supports_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP)){
-                //    frame_time = mframe.get_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP);
-                ////}else if(mframe.supports_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL)){
-                ////    frame_time = mframe.get_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL);
+                //}else if(multiframe.supports_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP)){
+                //    frame_time = multiframe.get_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP);
+                ////}else if(multiframe.supports_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL)){
+                ////    frame_time = multiframe.get_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL);
                 //}else{
                 //    FUNCERR("Unable to get synchronized frame's time");
                 //}
-                const auto frame_time = depth.get_timestamp();
+                //const auto frame_time = depth.get_timestamp();
+                const auto frame_time = depth.get_frame_number();
 
                 //// Get a copy of sensor position/orientation transformation at relevant time.
                 //{
@@ -177,34 +185,59 @@ int main(int argc, char **argv){
                 }
 
             // Otherwise, this is an unsynchronized frame.
-            }else{
+            }else if(rs2::motion_frame mframe = multiframe.as<rs2::motion_frame>()){
                 // Check which sensor this is and update the sensor position/orientation transformation at the moment of
                 // this frame.
                 //long int frame_time = 0;
                 //if(false){
-                ////}else if(mframe.supports_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP)){
-                ////    frame_time = mframe.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
-                ////}else if(mframe.supports_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP)){
-                ////    frame_time = mframe.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
-                //}else if(mframe.supports_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP)){
-                //    frame_time = mframe.get_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP);
-                ////}else if(mframe.supports_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL)){
-                ////    frame_time = mframe.get_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL);
+                ////}else if(multiframe.supports_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP)){
+                ////    frame_time = multiframe.get_frame_metadata(RS2_FRAME_METADATA_FRAME_TIMESTAMP);
+                ////}else if(multiframe.supports_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP)){
+                ////    frame_time = multiframe.get_frame_metadata(RS2_FRAME_METADATA_SENSOR_TIMESTAMP);
+                //}else if(multiframe.supports_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP)){
+                //    frame_time = multiframe.get_frame_metadata(RS2_FRAME_METADATA_BACKEND_TIMESTAMP);
+                ////}else if(multiframe.supports_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL)){
+                ////    frame_time = multiframe.get_frame_metadata(RS2_FRAME_METADATA_TIME_OF_ARRIVAL);
                 //}else{
                 //    FUNCERR("Unable to get un-synchronized frame's time");
                 //}
-                const auto frame_time = mframe.get_timestamp();
+                //const auto frame_time = mframe.get_timestamp();
+                const auto frame_time = mframe.get_frame_number();
 
-                // mframe ...
+                // Process gyroscope data.
+                if(false){
+                }else if( (mframe.get_profile().stream_type() == RS2_STREAM_GYRO)
+                      &&  (mframe.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F) ){
 
-                //// Get a copy of sensor position/orientation transformation at relevant time.
-                //{
-                //    std::lock_guard<std::mutex> l(m);
-                //    ...
-                //}
+                    const rs2_vector gyro_vec = mframe.get_motion_data();
+                    const double gyro_time = mframe.get_timestamp();
 
-        std::lock_guard<std::mutex> l(transform_m);
-                // Do something here...
+                    std::lock_guard<std::mutex> l(transform_m);
+                    t_bulk.emplace_back();
+                    t_bulk.back().t = frame_time;
+                    t_bulk.back().c.x = gyro_vec.x;
+                    t_bulk.back().c.y = gyro_vec.y;
+                    t_bulk.back().c.z = gyro_vec.z;
+                    t_bulk.back().type = 1;
+
+                // Process accelerometer data.
+                }else if( (mframe.get_profile().stream_type() == RS2_STREAM_ACCEL)
+                      &&  (mframe.get_profile().format() == RS2_FORMAT_MOTION_XYZ32F) ){
+
+                    const rs2_vector accel_vec = mframe.get_motion_data();
+
+                    std::lock_guard<std::mutex> l(transform_m);
+                    t_bulk.emplace_back();
+                    t_bulk.back().t = frame_time;
+                    t_bulk.back().c.x = accel_vec.x;
+                    t_bulk.back().c.y = accel_vec.y;
+                    t_bulk.back().c.z = accel_vec.z;
+                    t_bulk.back().type = 2;
+
+                }
+
+            }else{
+                throw std::runtime_error("Unrecognized frame type. Refusing to continue.");
             }
 
             return;
@@ -219,6 +252,9 @@ int main(int argc, char **argv){
         // NOTE: Reduced-quality settings may be needed to avoid overloading the system over long periods.
         rs2::pipeline pl;
         rs2::config conf;
+        conf.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F); // Enable IMU accelerometer.
+        conf.enable_stream(RS2_STREAM_GYRO,  RS2_FORMAT_MOTION_XYZ32F); // Enable IMU gyroscope.
+
         rs2::pipeline_profile profiles = pl.start(conf, frame_handler);
 
 
@@ -246,12 +282,12 @@ int main(int argc, char **argv){
         //
         // Note: Not sure if stop() clears queue, or how to reap any queued callbacks.
         //       The easiest solution is to claim all locks before processing anything.
-        FUNCINFO("Transforming data and writing to disk..");
+        FUNCINFO("Transforming point cloud data and writing to disk..");
         {
             std::lock_guard<std::mutex> pc_bulk_l(pc_bulk_m);
             std::lock_guard<std::mutex> transform_l(transform_m);
 
-            std::map<double, uint64_t> points_at_time;
+            std::map<double, unsigned long long> points_at_time;
             for(const auto &d : pc_bulk) ++points_at_time[d.t];
 
             std::set<double> time_has_been_processed;
@@ -274,7 +310,7 @@ int main(int argc, char **argv){
                     os.open(fname);
                     os << "ply" << std::endl
                        << "format ascii 1.0" << std::endl
-		               << "comment metadata: time = " << static_cast<uint64_t>(d.t) << std::endl
+		               << "comment metadata: time = " << d.t << std::endl
                        << "element vertex " << points_at_time[d.t] << std::endl
                        << "property float x" << std::endl
                        << "property float y" << std::endl
@@ -309,6 +345,24 @@ int main(int argc, char **argv){
             //FO_tr << frame_time
             //      //<< " " << mframe.stream_name()
             //      << "\n"; // Let OS manage write flushing.
+        }
+
+
+        FUNCINFO("Transforming motion data and writing to disk..");
+        {
+            std::lock_guard<std::mutex> pc_bulk_l(pc_bulk_m);
+            std::lock_guard<std::mutex> transform_l(transform_m);
+
+            std::ofstream os("motion_data.txt");
+
+            for(const auto &d : t_bulk){
+                os << d.t    << " "
+                   << d.c.x  << " "
+                   << d.c.y  << " "
+                   << d.c.z  << " "
+                   << d.type << "\n";
+            }
+            os.flush();
         }
 
     }catch(const std::exception& e){
