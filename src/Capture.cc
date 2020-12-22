@@ -121,8 +121,8 @@ int main(int argc, char **argv){
                 //}
 
                 rs2::pointcloud pc;
-                //pc.map_to(colour);
-                pc.map_to(infra);
+                pc.map_to(colour);
+                //pc.map_to(infra);
                 rs2::points ps = pc.calculate(depth);
                 if(!ps) FUNCERR("Unable to get texture-mapped point set from synchronized frame");
 
@@ -252,8 +252,11 @@ int main(int argc, char **argv){
         // NOTE: Reduced-quality settings may be needed to avoid overloading the system over long periods.
         rs2::pipeline pl;
         rs2::config conf;
-        conf.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F); // Enable IMU accelerometer.
-        conf.enable_stream(RS2_STREAM_GYRO,  RS2_FORMAT_MOTION_XYZ32F); // Enable IMU gyroscope.
+        //conf.enable_stream(RS2_STREAM_ACCEL, RS2_FORMAT_MOTION_XYZ32F); // Enable IMU accelerometer.
+        //conf.enable_stream(RS2_STREAM_GYRO,  RS2_FORMAT_MOTION_XYZ32F); // Enable IMU gyroscope.
+        //conf.enable_stream(RS2_STREAM_COLOR, RS2_FORMAT_RGB8);
+        //conf.enable_stream(RS2_STREAM_DEPTH, RS2_FORMAT_Z16);
+        //conf.enable_stream(RS2_STREAM_INFRARED, RS2_FORMAT_Y8);
 
         rs2::pipeline_profile profiles = pl.start(conf, frame_handler);
 
