@@ -262,7 +262,7 @@ int main(int argc, char **argv){
         //
         // NOTE: Instead, periodically check shutter button state.
         FUNCINFO("Collecting frames now..");
-        for(auto i = 0; i < 10; ++i){
+        for(auto i = 0; i < 30; ++i){
             std::this_thread::sleep_for(std::chrono::seconds(1));
 
             std::lock_guard<std::mutex> l(pc_bulk_m);
@@ -340,13 +340,7 @@ int main(int argc, char **argv){
                 }
             }
             os.flush();
-
-            //std::ofstream FO_tr("transformation.txt");
-            //FO_tr << frame_time
-            //      //<< " " << mframe.stream_name()
-            //      << "\n"; // Let OS manage write flushing.
         }
-
 
         FUNCINFO("Transforming motion data and writing to disk..");
         {
@@ -360,7 +354,7 @@ int main(int argc, char **argv){
                    << d.c.x  << " "
                    << d.c.y  << " "
                    << d.c.z  << " "
-                   << d.type << "\n";
+                   << static_cast<int>(d.type) << "\n";
             }
             os.flush();
         }
